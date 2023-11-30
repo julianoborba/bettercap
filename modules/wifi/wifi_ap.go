@@ -12,7 +12,7 @@ import (
 	"github.com/evilsocket/islazy/tui"
 )
 
-var errNoRecon = errors.New("Module wifi.ap requires module wifi.recon to be activated.")
+var errNoRecon = errors.New("module wifi.ap requires module wifi.recon to be activated")
 
 func (mod *WiFiModule) parseApConfig() (err error) {
 	var bssid string
@@ -61,7 +61,7 @@ func (mod *WiFiModule) startAp() error {
 			if err, pkt := packets.NewDot11Beacon(mod.apConfig, seqn); err != nil {
 				mod.Error("could not create beacon packet: %s", err)
 			} else {
-				mod.injectPacket(pkt)
+				mod.injectPacket(pkt, "wifi_ap", mod.apConfig.SSID, mod.apConfig.BSSID.String(), "not applicable")
 			}
 
 			time.Sleep(100 * time.Millisecond)

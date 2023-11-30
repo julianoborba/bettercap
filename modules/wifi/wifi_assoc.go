@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"time"
 
 	"github.com/bettercap/bettercap/network"
 	"github.com/bettercap/bettercap/packets"
@@ -14,13 +15,13 @@ func (mod *WiFiModule) sendAssocPacket(ap *network.AccessPoint) {
 	if err, pkt := packets.NewDot11Auth(mod.iface.HW, ap.HW, 1); err != nil {
 		mod.Error("cloud not create auth packet: %s", err)
 	} else {
-		mod.injectPacket(pkt)
+		mod.injectPacket(pkt, "wifi_assoc", ap.Hostname, ap.HwAddress, "not applicable")
 	}
 
 	if err, pkt := packets.NewDot11AssociationRequest(mod.iface.HW, ap.HW, ap.ESSID(), 1); err != nil {
 		mod.Error("cloud not create association request packet: %s", err)
 	} else {
-		mod.injectPacket(pkt)
+		mod.injectPacket(pkt, "wifi_assoc", ap.Hostname, ap.HwAddress, "not applicable")
 	}
 }
 
@@ -95,7 +96,7 @@ func (mod *WiFiModule) startAssoc(to net.HardwareAddr) error {
 		if isBcast {
 			return nil
 		}
-		return fmt.Errorf("%s is an unknown BSSID or it is in the association skip list.", to.String())
+		return fmt.Errorf("%s is an unknown BSSID or it is in the association skip list", to.String())
 	}
 	mod.writes.Add(1)
 	go func() {
@@ -117,16 +118,18 @@ func (mod *WiFiModule) startAssoc(to net.HardwareAddr) error {
 				}
 
 				if ap.IsOpen() && !mod.doAssocOpen() {
-					mod.Debug("skipping association for open network %s (wifi.assoc.open is false)", ap.ESSID())
+					mod.Debug("skipping association for open network:%s (bssid:%s) (wifi.assoc.open is false)", ap.ESSID(), ap.BSSID())
 				} else if ap.HasKeyMaterial() && !mod.doAssocAcquired() {
-					mod.Debug("skipping association for AP %s (key material already acquired)", ap.ESSID())
+					mod.Debug("skipping association for ap:%s (bssid:%s) (key material already acquired)", ap.ESSID(), ap.BSSID())
 				} else {
-					logger("sending association request to AP %s (channel:%d encryption:%s)", ap.ESSID(), ap.Channel, ap.Encryption)
+					logger("sending association request to ap:%s (bssid:%s channel:%d encryption:%s)", ap.ESSID(), ap.BSSID(), ap.Channel, ap.Encryption)
 
 					mod.onChannel(ap.Channel, func() {
 						mod.sendAssocPacket(ap)
 					})
 				}
+
+				time.Sleep(time.Duration(mod.assocDelay) * time.Millisecond)
 			}
 		}
 	}()

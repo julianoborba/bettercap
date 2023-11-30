@@ -11,7 +11,6 @@ require (
 	github.com/bettercap/nrf24 v0.0.0-20190219153547-aa37e6d0e0eb
 	github.com/bettercap/readline v0.0.0-20210228151553-655e48bcb7bf
 	github.com/bettercap/recording v0.0.0-20190408083647-3ce1dcf032e3
-	github.com/chifflier/nfqueue-go v0.0.0-20170228160439-61ca646babef
 	github.com/chzyer/logex v1.1.10 // indirect
 	github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 // indirect
 	github.com/dustin/go-humanize v1.0.0

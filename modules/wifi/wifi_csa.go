@@ -3,10 +3,11 @@ package wifi
 import (
 	"bytes"
 	"fmt"
+	"net"
+
 	"github.com/bettercap/bettercap/network"
 	"github.com/bettercap/bettercap/packets"
 	"github.com/google/gopacket/layers"
-	"net"
 )
 
 func (mod *WiFiModule) isCSASilent() bool {
@@ -36,7 +37,7 @@ func (mod *WiFiModule) sendBeaconWithCSAPacket(ap *network.AccessPoint, toChan i
 			mod.Error("could not create beacon packet: %s", err)
 			continue
 		} else {
-			mod.injectPacket(pkt)
+			mod.injectPacket(pkt, "wifi_csa", ap.Hostname, ap.HwAddress, "not applicable")
 		}
 	}
 }

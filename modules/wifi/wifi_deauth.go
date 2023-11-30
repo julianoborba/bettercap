@@ -11,10 +11,16 @@ import (
 	"github.com/bettercap/bettercap/packets"
 )
 
-func (mod *WiFiModule) injectPacket(data []byte) {
+func (mod *WiFiModule) injectPacket(data []byte, operation string, essid string, bssid string, station string) {
 	if err := mod.handle.WritePacketData(data); err != nil {
-		mod.Error("could not inject WiFi packet: %s", err)
-		mod.Session.Queue.TrackError()
+		if errorMessage := fmt.Sprintf("%s", err); errorMessage == "send: Resource temporarily unavailable" {
+			mod.Debug("could not inject WiFi packet. Operation:%s involving ap:%s (bssid:%s) <-> client:%s. Problem: %s", operation, essid, bssid, station, err)
+			mod.Session.Queue.TrackError()
+			time.Sleep(time.Duration(mod.waitResource) * time.Millisecond)
+		} else {
+			mod.Error("could not inject WiFi packet. Operation:%s involving ap:%s (bssid:%s) <-> client:%s. Problem: %s", operation, essid, bssid, station, err)
+			mod.Session.Queue.TrackError()
+		}
 	} else {
 		mod.Session.Queue.TrackSent(uint64(len(data)))
 	}
@@ -22,21 +28,23 @@ func (mod *WiFiModule) injectPacket(data []byte) {
 	time.Sleep(10 * time.Millisecond)
 }
 
-func (mod *WiFiModule) sendDeauthPacket(ap net.HardwareAddr, client net.HardwareAddr) {
-	for seq := uint16(0); seq < 64 && mod.Running(); seq++ {
+func (mod *WiFiModule) sendDeauthPacket(apHostname string, ap net.HardwareAddr, client net.HardwareAddr) {
+	for seq := uint16(0); seq < uint16(mod.deauthPackets) && mod.Running(); seq++ {
 		if err, pkt := packets.NewDot11Deauth(ap, client, ap, seq); err != nil {
 			mod.Error("could not create deauth packet: %s", err)
 			continue
 		} else {
-			mod.injectPacket(pkt)
+			mod.injectPacket(pkt, "wifi_deauth", apHostname, ap.String(), client.String())
 		}
 
 		if err, pkt := packets.NewDot11Deauth(client, ap, ap, seq); err != nil {
 			mod.Error("could not create deauth packet: %s", err)
 			continue
 		} else {
-			mod.injectPacket(pkt)
+			mod.injectPacket(pkt, "wifi_deauth", apHostname, ap.String(), client.String())
 		}
+
+		time.Sleep(time.Duration(mod.deauthDelay) * time.Millisecond)
 	}
 }
 
@@ -119,7 +127,7 @@ func (mod *WiFiModule) startDeauth(to net.HardwareAddr) error {
 		if isBcast {
 			return nil
 		}
-		return fmt.Errorf("%s is an unknown BSSID, is in the deauth skip list, or doesn't have detected clients.", to.String())
+		return fmt.Errorf("%s is an unknown BSSID, is in the deauth skip list, or doesn't have detected clients", to.String())
 	}
 
 	mod.writes.Add(1)
@@ -144,14 +152,14 @@ func (mod *WiFiModule) startDeauth(to net.HardwareAddr) error {
 				}
 
 				if ap.IsOpen() && !mod.doDeauthOpen() {
-					mod.Debug("skipping deauth for open network %s (wifi.deauth.open is false)", ap.ESSID())
+					mod.Debug("skipping deauth for open network:%s (bssid:%s) (wifi.deauth.open is false)", ap.ESSID(), ap.BSSID())
 				} else if ap.HasKeyMaterial() && !mod.doDeauthAcquired() {
-					mod.Debug("skipping deauth for AP %s (key material already acquired)", ap.ESSID())
+					mod.Debug("skipping deauth for ap:%s (bssid:%s) (key material already acquired)", ap.ESSID(), ap.BSSID())
 				} else {
-					logger("deauthing client %s from AP %s (channel:%d encryption:%s)", client.String(), ap.ESSID(), ap.Channel, ap.Encryption)
+					logger("deauthing client %s from ap:%s (bssid:%s channel:%d encryption:%s)", client.String(), ap.ESSID(), ap.BSSID(), ap.Channel, ap.Encryption)
 
 					mod.onChannel(ap.Channel, func() {
-						mod.sendDeauthPacket(ap.HW, client.HW)
+						mod.sendDeauthPacket(ap.Hostname, ap.HW, client.HW)
 					})
 				}
 			}

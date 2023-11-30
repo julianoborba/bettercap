@@ -2,6 +2,7 @@ package network
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ type AccessPoint struct {
 
 type apJSON struct {
 	*Station
+
 	Clients   []*Station `json:"clients"`
 	Handshake bool       `json:"handshake"`
 }
@@ -31,21 +33,43 @@ func NewAccessPoint(essid, bssid string, frequency int, rssi int8, aliases *data
 	}
 }
 
-func (ap *AccessPoint) MarshalJSON() ([]byte, error) {
+func CopyMap(original map[string]string) map[string]string {
+	copy := make(map[string]string, len(original))
+	for k, v := range original {
+		copy[k] = v
+	}
+	return copy
+}
+
+func (ap *AccessPoint) BuildDoc() apJSON {
 	ap.RLock()
 	defer ap.RUnlock()
 
-	doc := apJSON{
-		Station:   ap.Station,
-		Clients:   make([]*Station, 0, len(ap.clients)),
-		Handshake: ap.withKeyMaterial,
+	clients := make([]*Station, 0, len(ap.clients))
+	for _, client := range ap.clients {
+		client.WPS = CopyMap(client.WPS)
+		clients = append(clients, client)
 	}
 
-	for _, c := range ap.clients {
-		doc.Clients = append(doc.Clients, c)
-	}
+	station := ap.Station
+	station.WPS = CopyMap(ap.WPS)
 
-	return json.Marshal(doc)
+	handshake := ap.withKeyMaterial
+
+	return apJSON{
+		Station:   station,
+		Clients:   clients,
+		Handshake: handshake,
+	}
+}
+
+func (ap *AccessPoint) MarshalJSON() ([]byte, error) {
+	jsonData, err := json.Marshal(ap.BuildDoc())
+	if err != nil {
+		fmt.Printf("error while serializing the access point struct: %s\n", err)
+		return nil, err
+	}
+	return jsonData, nil
 }
 
 func (ap *AccessPoint) Get(bssid string) (*Station, bool) {

@@ -15,8 +15,6 @@ github.com/bettercap/readline v0.0.0-20210228151553-655e48bcb7bf h1:pwGPRc5PIp4K
 github.com/bettercap/readline v0.0.0-20210228151553-655e48bcb7bf/go.mod h1:03rWiUf60r1miMVzMEtgtkq7RdZniecZFw3/Zgvyxcs=
 github.com/bettercap/recording v0.0.0-20190408083647-3ce1dcf032e3 h1:pC4ZAk7UtDIbrRKzMMiIL1TVkiKlgtgcJodqKB53Rl4=
 github.com/bettercap/recording v0.0.0-20190408083647-3ce1dcf032e3/go.mod h1:kqVwnx6DKuOHMZcBnzsgp2Lq2JZHDtFtm92b5hxdRaM=
-github.com/chifflier/nfqueue-go v0.0.0-20170228160439-61ca646babef h1:uhLIhHeIRlFbAI1mOHkz3vN23T+QdhA9MgnvnJaQyL0=
-github.com/chifflier/nfqueue-go v0.0.0-20170228160439-61ca646babef/go.mod h1:xn8SYXvxzI99iSN8+Kh3wCvt2fhr27vPPf8ju9FwRS0=
 github.com/chzyer/logex v1.1.10 h1:Swpa1K6QvQznwJRcfTfQJmTE72DqScAa40E+fbHEXEE=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 h1:q763qf9huN11kDQavWsoZXJNW3xEE4JJyHa5Q25/sd8=

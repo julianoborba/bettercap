@@ -101,7 +101,7 @@ func (mod *WiFiModule) startProbing(staMac net.HardwareAddr, ssid string) error 
 			mod.Error("could not create probe packet: %s", err)
 			continue
 		} else {
-			mod.injectPacket(pkt)
+			mod.injectPacket(pkt, "wifi_recon", ssid, staMac.String(), "not applicable")
 		}
 	}
 

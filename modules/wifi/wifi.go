@@ -35,6 +35,7 @@ type WiFiModule struct {
 	minRSSI             int
 	apTTL               int
 	staTTL              int
+	waitResource        int
 	channel             int
 	hopPeriod           time.Duration
 	hopChanges          chan bool
@@ -50,10 +51,13 @@ type WiFiModule struct {
 	deauthSilent        bool
 	deauthOpen          bool
 	deauthAcquired      bool
+	deauthPackets       int
+	deauthDelay         int
 	assocSkip           []net.HardwareAddr
 	assocSilent         bool
 	assocOpen           bool
 	assocAcquired       bool
+	assocDelay          int
 	csaSilent           bool
 	fakeAuthSilent      bool
 	filterProbeSTA      *regexp.Regexp
@@ -75,6 +79,7 @@ func NewWiFiModule(s *session.Session) *WiFiModule {
 		minRSSI:         -200,
 		apTTL:           300,
 		staTTL:          300,
+		waitResource:    250,
 		channel:         0,
 		stickChan:       0,
 		hopPeriod:       250 * time.Millisecond,
@@ -86,10 +91,13 @@ func NewWiFiModule(s *session.Session) *WiFiModule {
 		deauthSilent:    false,
 		deauthOpen:      false,
 		deauthAcquired:  false,
+		deauthPackets:   64,
+		deauthDelay:     10,
 		assocSkip:       []net.HardwareAddr{},
 		assocSilent:     false,
 		assocOpen:       false,
 		assocAcquired:   false,
+		assocDelay:      10,
 		csaSilent:       false,
 		fakeAuthSilent:  false,
 		showManuf:       false,
@@ -136,7 +144,7 @@ func NewWiFiModule(s *session.Session) *WiFiModule {
 				mod.stickChan = ap.Channel
 				return nil
 			}
-			return fmt.Errorf("Could not find station with BSSID %s", args[0])
+			return fmt.Errorf("could not find station with BSSID %s", args[0])
 		}))
 
 	mod.AddHandler(session.NewModuleHandler("wifi.recon clear", "",
@@ -321,6 +329,54 @@ func NewWiFiModule(s *session.Session) *WiFiModule {
 		}
 	})
 
+	waitResource := session.NewIntParameter("wifi.inject.wait.unavailable",
+		"250",
+		"Milliseconds of waiting for unavailable remote resources, possible not in range anymore.")
+
+	mod.AddObservableParam(waitResource, func(v string) {
+		if err, v := waitResource.Get(s); err != nil {
+			mod.Error("%v", err)
+		} else if mod.waitResource = v.(int); mod.Started {
+			mod.Info("wifi.inject.wait.unavailable set to %d", mod.waitResource)
+		}
+	})
+
+	deauthPackets := session.NewIntParameter("wifi.deauth.packets",
+		"64",
+		"Sequence length for deauthentication packets.")
+
+	mod.AddObservableParam(deauthPackets, func(v string) {
+		if err, v := deauthPackets.Get(s); err != nil {
+			mod.Error("%v", err)
+		} else if mod.deauthPackets = v.(int); mod.Started {
+			mod.Info("wifi.deauth.packets set to %d", mod.deauthPackets)
+		}
+	})
+
+	deauthDelay := session.NewIntParameter("wifi.deauth.packets.delay",
+		"10",
+		"Milliseconds of waiting to deauthentication packets transmission.")
+
+	mod.AddObservableParam(deauthDelay, func(v string) {
+		if err, v := deauthDelay.Get(s); err != nil {
+			mod.Error("%v", err)
+		} else if mod.deauthDelay = v.(int); mod.Started {
+			mod.Info("wifi.deauth.packets.delay set to %d", mod.deauthDelay)
+		}
+	})
+
+	assocDelay := session.NewIntParameter("wifi.assoc.packets.delay",
+		"10",
+		"Milliseconds of waiting to association packets transmission.")
+
+	mod.AddObservableParam(assocDelay, func(v string) {
+		if err, v := assocDelay.Get(s); err != nil {
+			mod.Error("%v", err)
+		} else if mod.assocDelay = v.(int); mod.Started {
+			mod.Info("wifi.assoc.packets.delay set to %d", mod.assocDelay)
+		}
+	})
+
 	mod.AddParam(session.NewStringParameter("wifi.region",
 		"",
 		"",
@@ -419,7 +475,7 @@ func NewWiFiModule(s *session.Session) *WiFiModule {
 						return err
 					} else {
 						if f := network.Dot11Chan2Freq(ch); f == 0 {
-							return fmt.Errorf("%d is not a valid wifi channel.", ch)
+							return fmt.Errorf("%d is not a valid wifi channel", ch)
 						} else {
 							freqs = append(freqs, f)
 						}
